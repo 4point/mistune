@@ -436,6 +436,7 @@ class InlineGrammar(object):
         r')\]\('
         r'''\s*<?([\s\S]*?)>?(?:\s+['"]([\s\S]*?)['"])?\s*'''
         r'\)'
+        r'(?:{\.(Portrait|Inline|Right){1,}})?'
     )
     reflink = re.compile(
         r'^!?\[('
@@ -611,7 +612,11 @@ class InlineLexer(object):
 
         if line[0] == '!':
             text = escape(text, quote=True)
-            return self.renderer.image(link, title, text)
+            try:
+                style = m.group(4)
+                return self.renderer.image(link, title, text, style)
+            except IndexError:
+                return self.renderer.image(link, title, text)
 
         self._in_link = True
         text = self.output(text)
@@ -817,7 +822,7 @@ class Renderer(object):
             return '<a href="%s">%s</a>' % (link, text)
         return '<a href="%s" title="%s">%s</a>' % (link, title, text)
 
-    def image(self, src, title, text):
+    def image(self, src, title, text, style=None):
         """Rendering a image with title and text.
 
         :param src: source link of the image.
@@ -829,8 +834,11 @@ class Renderer(object):
         else:
             html = '<img src="%s" alt="%s" title="%s"' % (src, text, title)
         if self.options.get('use_xhtml'):
-            return '%s />' % html
-        return '%s>' % html
+            html = '%s />' % html
+        html = '%s>' % html
+        if style:
+            html = '<div class="%s">%s</div>' % (style, html)
+        return html
 
     def raw_html(self, html):
         """Rendering span level html snippet.
